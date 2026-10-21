@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import se.vader.app.domain.Day
 import se.vader.app.domain.Point
 import se.vader.app.domain.STOCKHOLM
+import se.vader.app.domain.SunTimes
 import se.vader.app.domain.Week
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -140,7 +141,7 @@ fun WeatherScreen(vm: WeatherViewModel) {
                     item { DaysGrid(week) }
                     item {
                         Text(
-                            "Tryck på en dag för timprognos. Högsta och lägsta temperatur under dygnet. " +
+                            "Tryck på en dag för timprognos. Högsta och lägsta temperatur under dygnet. ↑↓ = sol upp och ned. " +
                                 "Dag 5–6 är mindre säkra.\nData: SMHI (CC BY 4.0), prognosmodell SNOW1g.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -237,6 +238,10 @@ private fun DayTile(d: Day, selected: Boolean, onClick: () -> Unit, modifier: Mo
                 Text("${d.tMin.roundToInt()}°", color = ColdColor, fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(bottom = 2.dp))
             }
+            d.sun?.let {
+                Text(sunShort(it), style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            }
             val flags = d.flags
             if (flags.isNotEmpty()) {
                 FlowRow(
@@ -266,6 +271,9 @@ private fun Hours(d: Day) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("${d.title} ${DM.format(d.date).trimEnd('.')}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            d.sun?.let {
+                Text(sunLong(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             if (d.coarse) {
                 Text("Längre fram ges prognosen i 6- eller 12-timmarssteg.", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -284,4 +292,17 @@ private fun HourItem(p: Point) {
         WeatherIcon(p.sym, 24.dp, Modifier.padding(horizontal = 4.dp))
         Text("${p.temp.roundToInt()}°", fontWeight = FontWeight.SemiBold)
     }
+}
+
+private fun sunShort(s: SunTimes): String = when {
+    s.polarDay -> "Midnattssol"
+    s.polarNight -> "Polarnatt"
+    else -> "↑${HM.format(s.rise)} ↓${HM.format(s.set)}"
+}
+
+private fun sunLong(s: SunTimes): String {
+    if (s.polarDay) return "Midnattssol – solen går inte ner."
+    if (s.polarNight) return "Polarnatt – solen går inte upp."
+    val mins = s.dayLength?.toMinutes() ?: 0
+    return "Sol upp ${HM.format(s.rise)} · ned ${HM.format(s.set)} · dagslängd ${mins / 60} h ${mins % 60} min"
 }

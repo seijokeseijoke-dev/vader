@@ -22,8 +22,12 @@ import java.util.concurrent.TimeUnit
 data class SmhiForecast(
     val createdTime: String?,
     val referenceTime: String?,
-    val timeSeries: List<SmhiStep>?
+    val timeSeries: List<SmhiStep>?,
+    val geometry: SmhiGeometry? = null
 )
+
+/** Punktens koordinater som SMHI faktiskt använde: [lon, lat]. */
+data class SmhiGeometry(val coordinates: List<Double>?)
 
 data class SmhiStep(
     val time: String?,

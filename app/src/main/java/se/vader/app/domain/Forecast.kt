@@ -83,7 +83,8 @@ data class Day(
     val sym: Int,
     val partial: Boolean,    // idag, när en del av dygnet redan passerat
     val coarse: Boolean,     // 6/12-timmarssteg
-    val uncertain: Boolean   // dag 5–6
+    val uncertain: Boolean,  // dag 5–6
+    val sun: SunTimes? = null
 ) {
     val snowy: Boolean get() = Symbols.info(sym).kind in setOf(Kind.SNOW, Kind.SLEET)
     private val weekday get() = date.dayOfWeek
@@ -154,6 +155,7 @@ object ForecastBuilder {
         }
 
         val today = now.atZone(STOCKHOLM).toLocalDate()
+        val coords = json.geometry?.coordinates?.takeIf { it.size >= 2 }   // [lon, lat]
         val days = byDay.keys.filter { !it.isBefore(today) }.sorted().take(nDays).mapIndexed { i, date ->
             val pts = byDay.getValue(date)
             val precip = ((precipByDay[date] ?: 0.0) * 10).roundToInt() / 10.0
@@ -171,7 +173,8 @@ object ForecastBuilder {
                 sym = daySymbol(pts, precip),
                 partial = date == today && pts.first().localHour > 9,
                 coarse = pts.size <= 4,
-                uncertain = i >= 4
+                uncertain = i >= 4,
+                sun = coords?.let { Sun.times(date, lat = it[1], lon = it[0]) }
             )
         }
         return Week(days, summarize(days), json.createdTime?.let(::parse))

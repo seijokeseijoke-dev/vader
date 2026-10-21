@@ -10,7 +10,8 @@ Visar SMHI:s 6-dagarsprognos för valfri ort i Norden, sammanfattad i klartext.
 - 6 dagar i rutnät, 3 i bredd (2 rader), eller 2 i bredd (3 rader) på smala skärmar: symbol, högsta och lägsta temperatur
 - **Sammanfattning i klartext:** när det regnar/snöar och hur mycket, samt frostrisk
 - **Markeringar:** Frost, Blåsigt (byar ≥ 15 m/s eller medelvind ≥ 10 m/s), Mycket regn/snö (≥ 10 mm), Åska, Osäker (dag 5–6)
-- Tryck på en dag för att se timprognosen
+- Sol upp och ned per dag (beräknas lokalt med NOAA:s solformel, ±1 min; hanterar midnattssol och polarnatt)
+- Tryck på en dag för att se timprognosen och dagslängden
 - Appen minns senast valda ort. Android har även pull-to-refresh
 
 ## Datakällor
