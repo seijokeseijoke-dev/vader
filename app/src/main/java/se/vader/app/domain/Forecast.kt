@@ -83,7 +83,7 @@ data class Day(
     val sym: Int,
     val partial: Boolean,    // idag, när en del av dygnet redan passerat
     val coarse: Boolean,     // 6/12-timmarssteg
-    val uncertain: Boolean   // dag 5 och framåt
+    val uncertain: Boolean   // dag 5–6
 ) {
     val snowy: Boolean get() = Symbols.info(sym).kind in setOf(Kind.SNOW, Kind.SLEET)
     private val weekday get() = date.dayOfWeek
@@ -110,7 +110,7 @@ data class Day(
         get() = buildList {
             if (tMin <= 0) add(Flag("Frost", true))
             if (gustMax >= 15 || windMax >= 10) add(Flag("Blåsigt", true))
-            if (precip >= 10) add(Flag("Mycket nederbörd", true))
+            if (precip >= 10) add(Flag(if (snowy) "Mycket snö" else "Mycket regn", true))
             if (thunder >= 30 || sym == 11 || sym == 21) add(Flag("Åska", true))
             if (uncertain) add(Flag("Osäker", false))
         }
@@ -122,7 +122,7 @@ data class Week(val days: List<Day>, val summary: List<String>, val created: Ins
 
 object ForecastBuilder {
 
-    fun build(json: SmhiForecast, now: Instant = Instant.now(), nDays: Int = 7): Week {
+    fun build(json: SmhiForecast, now: Instant = Instant.now(), nDays: Int = 6): Week {
         val points = json.timeSeries.orEmpty().mapNotNull { step ->
             val d = step.data ?: return@mapNotNull null
             val time = step.time?.let(::parse) ?: return@mapNotNull null

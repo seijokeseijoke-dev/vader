@@ -1,10 +1,14 @@
 package se.vader.app.ui
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -74,7 +78,7 @@ fun WeatherScreen(vm: WeatherViewModel) {
     val keyboard = LocalSoftwareKeyboardController.current
     fun submit() { keyboard?.hide(); vm.search() }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Väder 7 dagar") }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Väder 6 dagar") }) }) { padding ->
         PullToRefreshBox(
             isRefreshing = s.refreshing,
             onRefresh = vm::refresh,
@@ -133,11 +137,11 @@ fun WeatherScreen(vm: WeatherViewModel) {
                     }
                     if (s.error != null) item { ErrorBox(s.error, onRetry = vm::refresh) }
                     item { SummaryCard(week) }
-                    item { DaysCard(week) }
+                    item { DaysGrid(week) }
                     item {
                         Text(
-                            "Tryck på en dag för timprognos. Stapeln visar dagens lägsta–högsta på veckans skala. " +
-                                "Dag 5–7 är mindre säkra.\nData: SMHI (CC BY 4.0), prognosmodell SNOW1g.",
+                            "Tryck på en dag för timprognos. Högsta och lägsta temperatur under dygnet. " +
+                                "Dag 5–6 är mindre säkra.\nData: SMHI (CC BY 4.0), prognosmodell SNOW1g.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -179,82 +183,67 @@ private fun SummaryCard(week: Week) {
     }
 }
 
+/** 6 dagar i rutnät: 3 i bredd (2 rader). Vid smal skärm eller stor text: 2 i bredd (3 rader). */
 @Composable
-private fun DaysCard(week: Week) {
-    val lo = week.days.minOf { it.tMin }
-    val hi = week.days.maxOf { it.tMax }
-    val span = max(1.0, hi - lo)
-    Card(Modifier.fillMaxWidth()) {
-        Column {
-            week.days.forEachIndexed { i, d ->
-                if (i > 0) HorizontalDivider()
-                DayRow(d, lo, span)
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun DayRow(d: Day, lo: Double, span: Double) {
-    var open by rememberSaveable(d.date.toString()) { mutableStateOf(false) }
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clickable { open = !open }
-            .animateContentSize()
-            .alpha(if (d.uncertain) 0.8f else 1f)
-            .padding(horizontal = 12.dp, vertical = 10.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.width(72.dp)) {
-                Text(d.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text(
-                    DM.format(d.date).trimEnd('.') + if (d.partial) " · resten" else "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            WeatherIcon(d.sym, 40.dp)
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("${d.tMin.roundToInt()}°", color = ColdColor, fontWeight = FontWeight.SemiBold)
-                    Text("${d.tMax.roundToInt()}°", color = WarmColor, fontWeight = FontWeight.SemiBold)
-                }
-                TempBar(((d.tMin - lo) / span).toFloat(), ((d.tMax - d.tMin) / span).toFloat())
-                val flags = d.flags
-                if (flags.isNotEmpty()) {
-                    FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        flags.forEach { FlagChip(it.text, it.warning) }
+private fun DaysGrid(week: Week) {
+    var selected by rememberSaveable { mutableStateOf<String?>(null) }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val cols = if (maxWidth >= 300.dp) 3 else 2
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                week.days.chunked(cols).forEach { row ->
+                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEach { d ->
+                            DayTile(
+                                d,
+                                selected = selected == d.date.toString(),
+                                onClick = { selected = if (selected == d.date.toString()) null else d.date.toString() },
+                                modifier = Modifier.weight(1f).fillMaxHeight()
+                            )
+                        }
+                        repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
             }
         }
-        if (open) Hours(d)
+        week.days.firstOrNull { it.date.toString() == selected }?.let { Hours(it) }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
-private fun TempBar(start: Float, width: Float) {
-    val track = MaterialTheme.colorScheme.surfaceVariant
-    Box(
-        Modifier
-            .padding(vertical = 4.dp)
-            .fillMaxWidth()
-            .height(8.dp)
-            .background(track, RoundedCornerShape(4.dp))
+private fun DayTile(d: Day, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Card(
+        onClick = onClick,
+        modifier = modifier.alpha(if (d.uncertain) 0.8f else 1f),
+        border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
     ) {
-        Row(Modifier.fillMaxSize()) {
-            if (start > 0f) Spacer(Modifier.weight(start.coerceIn(0.001f, 1f)))
-            Box(
-                Modifier
-                    .weight(width.coerceIn(0.03f, 1f))
-                    .fillMaxSize()
-                    .background(Brush.horizontalGradient(listOf(ColdColor, WarmColor)), RoundedCornerShape(4.dp))
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(d.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(
+                DM.format(d.date).trimEnd('.') + if (d.partial) " · resten" else "",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
             )
-            val rest = 1f - start - width.coerceAtLeast(0.03f)
-            if (rest > 0.001f) Spacer(Modifier.weight(rest))
+            WeatherIcon(d.sym, 44.dp)
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("${d.tMax.roundToInt()}°", color = WarmColor, fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge)
+                Text("${d.tMin.roundToInt()}°", color = ColdColor, fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(bottom = 2.dp))
+            }
+            val flags = d.flags
+            if (flags.isNotEmpty()) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) { flags.forEach { FlagChip(it.text, it.warning) } }
+            }
         }
     }
 }
@@ -271,22 +260,28 @@ private fun FlagChip(text: String, warning: Boolean) {
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Hours(d: Day) {
-    Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        if (d.coarse) {
-            Text("Längre fram ges prognosen i 6- eller 12-timmarssteg.", style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("${d.title} ${DM.format(d.date).trimEnd('.')}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            if (d.coarse) {
+                Text("Längre fram ges prognosen i 6- eller 12-timmarssteg.", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                d.points.forEach { HourItem(it) }
+            }
         }
-        d.points.forEach { HourRow(it) }
     }
 }
 
 @Composable
-private fun HourRow(p: Point) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(HM.format(p.time), Modifier.width(52.dp), style = MaterialTheme.typography.bodyMedium)
-        WeatherIcon(p.sym, 26.dp)
-        Text("${p.temp.roundToInt()}°", Modifier.width(48.dp).padding(start = 8.dp), fontWeight = FontWeight.SemiBold)
+private fun HourItem(p: Point) {
+    Row(Modifier.width(92.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(HM.format(p.time), style = MaterialTheme.typography.bodyMedium)
+        WeatherIcon(p.sym, 24.dp, Modifier.padding(horizontal = 4.dp))
+        Text("${p.temp.roundToInt()}°", fontWeight = FontWeight.SemiBold)
     }
 }

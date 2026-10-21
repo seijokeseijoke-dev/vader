@@ -1,15 +1,15 @@
-# Väder 7 dagar
+# Väder 6 dagar
 
-Visar SMHI:s 7-dagarsprognos för valfri ort i Norden, sammanfattad i klartext.
+Visar SMHI:s 6-dagarsprognos för valfri ort i Norden, sammanfattad i klartext.
 
 - **Webbversion (för test):** https://seijokeseijoke-dev.github.io/vader/
 - **Android-APK:** se *Releases* (byggs automatiskt vid varje push till `main`)
 
 ## Funktioner
 - Inmatning av ort, med "Menade du"-förslag när det finns flera orter med samma namn
-- En rad per dag: symbol och lägsta/högsta temperatur som stapel på veckans gemensamma skala
+- 6 dagar i rutnät, 3 i bredd (2 rader), eller 2 i bredd (3 rader) på smala skärmar: symbol, högsta och lägsta temperatur
 - **Sammanfattning i klartext:** när det regnar/snöar och hur mycket, samt frostrisk
-- **Markeringar:** Frost, Blåsigt (byar ≥ 15 m/s eller medelvind ≥ 10 m/s), Mycket nederbörd (≥ 10 mm), Åska, Osäker (dag 5–7)
+- **Markeringar:** Frost, Blåsigt (byar ≥ 15 m/s eller medelvind ≥ 10 m/s), Mycket regn/snö (≥ 10 mm), Åska, Osäker (dag 5–6)
 - Tryck på en dag för att se timprognosen
 - Appen minns senast valda ort. Android har även pull-to-refresh
 
@@ -26,7 +26,7 @@ Prognosen är timvis i cirka 2 dygn, därefter i 2-, 6- och 12-timmarssteg, tota
 
 ## Så beräknas "smart"
 - **Dagens symbol:** Tas från dagtid (07–20). En torr dag får median-molnigheten. En våt dag får den vanligaste nederbördssymbolen, och vid lika antal den kraftigaste.
-- **Osäkerhet:** Dag 5–7 visas nedtonade. Träffsäkerheten sjunker tydligt efter 4–5 dygn.
+- **Osäkerhet:** Dag 5–6 visas nedtonade. Träffsäkerheten sjunker tydligt efter 4–5 dygn.
 
 ## Struktur
 ```

@@ -45,9 +45,9 @@ class ForecastBuilderTest {
     private val now = Instant.parse("2026-10-21T06:00:00Z")
 
     @Test
-    fun sevenDaysStartingToday() {
+    fun sixDaysStartingToday() {
         val week = ForecastBuilder.build(series(now), now)
-        assertEquals(7, week.days.size)
+        assertEquals(6, week.days.size)
         assertEquals("Idag", week.days[0].title)
         assertEquals("Imorgon", week.days[1].title)
         assertTrue(week.days[4].uncertain)
