@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Väder 7 dagar</title>
+<title>Väder 6 dagar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
@@ -70,44 +70,42 @@ button.link { background: none; color: var(--accent); padding: 2px 4px; font-wei
 .summary { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; }
 .summary p { margin: 0; }
 .summary .lead { font-weight: 600; }
-.days { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+/* 6 dagar i rutnät: 3 i bredd (2 rader), 2 i bredd (3 rader) på smala skärmar */
+.days { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 340px) { .days { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .day {
-  display: grid; grid-template-columns: 4.6rem 2.6rem 1fr; gap: 10px; align-items: center;
-  padding: 12px 14px; border-top: 1px solid var(--line); cursor: pointer; background: none; width: 100%;
-  text-align: left; color: inherit; font: inherit; border-radius: 0;
+  display: grid; justify-items: center; align-content: start; gap: 4px; text-align: center;
+  padding: 10px 6px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  cursor: pointer; color: inherit; font: inherit; min-width: 0;
 }
-.day:first-child { border-top: 0; }
 .day.uncertain { opacity: .78; }
-.dname { font: 600 1.15rem/1.1 var(--font-display); }
-.dname small { display: block; font: 400 .8rem var(--font-body); color: var(--muted); }
-.icon svg { width: 2.4rem; height: 2.4rem; display: block; }
-.temps { display: grid; gap: 4px; min-width: 0; }
-.bar { position: relative; height: 8px; border-radius: 4px; background: var(--line); }
-.bar span { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: linear-gradient(90deg, var(--cold), var(--warm)); }
-.tnums { display: flex; justify-content: space-between; font: 600 1.05rem var(--font-display); font-variant-numeric: tabular-nums; }
-.tnums .lo { color: var(--cold); } .tnums .hi { color: var(--warm); }
-.chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.chip { font-size: .72rem; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: var(--info-bg); color: var(--info-fg); }
+.day[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.dname { font: 600 1.1rem/1.1 var(--font-display); }
+.dname small { display: block; font: 400 .78rem var(--font-body); color: var(--muted); }
+.icon svg { width: 2.8rem; height: 2.8rem; display: block; }
+.tnums { display: flex; gap: 6px; align-items: baseline; font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+.tnums .hi { color: var(--warm); font-weight: 700; font-size: 1.35rem; }
+.tnums .lo { color: var(--cold); font-weight: 600; font-size: 1rem; }
+.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; }
+.chip { font-size: .64rem; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; padding: 1px 6px; border-radius: 999px; background: var(--info-bg); color: var(--info-fg); }
 .chip.warn { background: var(--warn-bg); color: var(--warn-fg); }
-.hours { grid-column: 1 / -1; display: grid; gap: 2px; padding-top: 6px; }
-.hour { display: grid; grid-template-columns: 3.2rem 1.8rem 3rem; gap: 8px; align-items: center; font-size: .9rem; font-variant-numeric: tabular-nums; }
-.hour svg { width: 1.6rem; height: 1.6rem; display: block; }
+.hours { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; }
+.hours h3 { margin: 0; font: 600 1.1rem var(--font-display); }
+.hgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.2rem, 1fr)); gap: 4px 8px; }
+.hour { display: flex; align-items: center; gap: 4px; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.hour svg { width: 1.5rem; height: 1.5rem; display: block; flex: none; }
 .hour .t { font-weight: 600; }
-.hour .p { color: var(--rain); }
 .state { padding: 28px 16px; text-align: center; }
 .err { color: var(--warn-fg); background: var(--warn-bg); border-radius: 10px; padding: 12px 14px; }
 footer { font-size: .8rem; color: var(--muted); }
 footer a { color: inherit; }
-@media (max-width: 420px) {
-  .day { grid-template-columns: 3.9rem 2.2rem 1fr; gap: 8px; padding: 12px 10px; }
-}
-@media (prefers-reduced-motion: no-preference) { .day { transition: background .15s; } .day:hover { background: var(--bg); } }
+@media (prefers-reduced-motion: no-preference) { .day { transition: border-color .15s; } .day:hover { border-color: var(--accent); } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>Väder 7 dagar</h1>
+    <h1>Väder 6 dagar</h1>
     <div class="muted">Prognos från SMHI för valfri ort i Norden</div>
   </header>
 
@@ -123,7 +121,7 @@ footer a { color: inherit; }
   <footer>
     Data: <a href="https://www.smhi.se/data" target="_blank" rel="noopener">SMHI</a> (CC BY 4.0), prognosmodell SNOW1g.
     Ortsökning: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> (Nominatim).
-    Dag 5–7 är mindre säkra.
+    Dag 5–6 är mindre säkra.
   </footer>
 </div>
 
@@ -203,7 +201,7 @@ const hmFmt = new Intl.DateTimeFormat("sv-SE", { timeZone: TZ, hour: "2-digit", 
 const clean = (s) => s.replace(".", "");
 
 /* ---------- aggregera SMHI-tidsserie till dagar ---------- */
-function buildDays(json, nDays = 7) {
+function buildDays(json, nDays = 6) {
   const pts = json.timeSeries.map(t => {
     const d = t.data, time = new Date(t.time);
     const start = t.intervalParametersStartTime ? new Date(t.intervalParametersStartTime) : new Date(time - 3600e3);
@@ -279,7 +277,7 @@ function flags(d) {
   const f = [];
   if (d.tMin <= 0) f.push({ t: "Frost", w: true });
   if (d.gustMax >= 15 || d.windMax >= 10) f.push({ t: "Blåsigt", w: true });
-  if (d.precip >= 10) f.push({ t: "Mycket nederbörd", w: true });
+  if (d.precip >= 10) f.push({ t: d.snowy ? "Mycket snö" : "Mycket regn", w: true });
   if (d.thunder >= 30 || [11, 21].includes(d.sym)) f.push({ t: "Åska", w: true });
   if (d.uncertain) f.push({ t: "Osäker", w: false });
   return f;
@@ -323,8 +321,6 @@ const r0 = (x) => Math.round(x);
 function render(place, json) {
   const days = buildDays(json);
   if (!days.length) { $("out").innerHTML = `<div class="err">Prognosen saknar data för kommande dagar.</div>`; return; }
-  const lo = Math.min(...days.map(d => d.tMin)), hi = Math.max(...days.map(d => d.tMax));
-  const span = Math.max(1, hi - lo);
   const created = new Date(json.createdTime || json.approvedTime || Date.now());
   const sum = summarize(days);
 
@@ -336,34 +332,32 @@ function render(place, json) {
       </section>
       <section class="days" aria-label="Dag för dag">
         ${days.map(d => {
-          const l = ((d.tMin - lo) / span) * 100, w = Math.max(3, ((d.tMax - d.tMin) / span) * 100);
           const fl = flags(d);
-          return `<div class="day${d.uncertain ? " uncertain" : ""}" role="button" tabindex="0" aria-expanded="false" data-k="${d.key}">
+          return `<button type="button" class="day${d.uncertain ? " uncertain" : ""}" aria-pressed="false" data-k="${d.key}">
             <div class="dname">${d.name}<small>${clean(dmFmt.format(d.date))}${d.partial ? " · resten" : ""}</small></div>
             <div class="icon">${icon(d.sym)}</div>
-            <div class="temps">
-              <div class="tnums"><span class="lo">${r0(d.tMin)}°</span><span class="hi">${r0(d.tMax)}°</span></div>
-              <div class="bar"><span style="left:${l.toFixed(1)}%;width:${w.toFixed(1)}%"></span></div>
-              ${fl.length ? `<div class="chips">${fl.map(f => `<span class="chip${f.w ? " warn" : ""}">${f.t}</span>`).join("")}</div>` : ""}
-            </div>
-          </div>`;
+            <div class="tnums"><span class="hi">${r0(d.tMax)}°</span><span class="lo">${r0(d.tMin)}°</span></div>
+            ${fl.length ? `<div class="chips">${fl.map(f => `<span class="chip${f.w ? " warn" : ""}">${f.t}</span>`).join("")}</div>` : ""}
+          </button>`;
         }).join("")}
       </section>
-      <div class="muted" style="font-size:.85rem">Tryck på en dag för timprognos. Stapeln visar dagens lägsta–högsta på veckans skala.</div>
+      <section id="hours" class="hours" hidden></section>
+      <div class="muted" style="font-size:.85rem">Tryck på en dag för timprognos. Högsta och lägsta temperatur under dygnet.</div>
     </div>`;
 
+  const panel = $("hours");
   document.querySelectorAll(".day").forEach(el => {
-    const toggle = () => {
-      const open = el.querySelector(".hours");
-      if (open) { open.remove(); el.setAttribute("aria-expanded", "false"); return; }
+    el.addEventListener("click", () => {
+      const wasOpen = el.getAttribute("aria-pressed") === "true";
+      document.querySelectorAll(".day").forEach(b => b.setAttribute("aria-pressed", "false"));
+      if (wasOpen) { panel.hidden = true; return; }
+      el.setAttribute("aria-pressed", "true");
       const d = days.find(x => x.key === el.dataset.k);
-      const h = document.createElement("div"); h.className = "hours";
-      h.innerHTML = (d.coarse ? `<div class="muted" style="font-size:.8rem">Längre fram ges prognosen i 6- eller 12-timmarssteg.</div>` : "") +
-        d.pts.map(p => `<div class="hour"><span>${hmFmt.format(p.time)}</span>${icon(p.sym)}<span class="t">${r0(p.temp)}°</span></div>`).join("");
-      el.appendChild(h); el.setAttribute("aria-expanded", "true");
-    };
-    el.addEventListener("click", toggle);
-    el.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+      panel.innerHTML = `<h3>${d.name} ${clean(dmFmt.format(d.date))}</h3>` +
+        (d.coarse ? `<div class="muted" style="font-size:.8rem">Längre fram ges prognosen i 6- eller 12-timmarssteg.</div>` : "") +
+        `<div class="hgrid">${d.pts.map(p => `<div class="hour"><span>${hmFmt.format(p.time)}</span>${icon(p.sym)}<span class="t">${r0(p.temp)}°</span></div>`).join("")}</div>`;
+      panel.hidden = false;
+    });
   });
 }
 
