@@ -87,6 +87,7 @@ button.link { background: none; color: var(--accent); padding: 2px 4px; font-wei
 .tnums { display: flex; gap: 6px; align-items: baseline; font-family: var(--font-display); font-variant-numeric: tabular-nums; }
 .tnums .hi { color: var(--warm); font-weight: 700; font-size: 1.35rem; }
 .tnums .lo { color: var(--cold); font-weight: 600; font-size: 1rem; }
+.sun { font-size: .74rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; }
 .chip { font-size: .64rem; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; padding: 1px 6px; border-radius: 999px; background: var(--info-bg); color: var(--info-fg); }
 .chip.warn { background: var(--warn-bg); color: var(--warn-fg); }
@@ -201,8 +202,40 @@ const dmFmt = new Intl.DateTimeFormat("sv-SE", { timeZone: TZ, day: "numeric", m
 const hmFmt = new Intl.DateTimeFormat("sv-SE", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
 const clean = (s) => s.replace(".", "");
 
+/* ---------- sol upp/ned (solformeln enligt NOAA, ±1 min) ---------- */
+function sunTimes(key, lat, lon) {
+  const [y, m, d] = key.split("-").map(Number);
+  const rad = Math.PI / 180;
+  const J = Date.UTC(y, m - 1, d, 12) / 86400000 + 2440587.5;
+  const n = Math.ceil(J - 2451545.0 + 0.0008);
+  const Js = n - lon / 360;
+  const M = (357.5291 + 0.98560028 * Js) % 360;
+  const C = 1.9148 * Math.sin(M * rad) + 0.02 * Math.sin(2 * M * rad) + 0.0003 * Math.sin(3 * M * rad);
+  const L = (M + C + 180 + 102.9372) % 360;
+  const Jt = 2451545.0 + Js + 0.0053 * Math.sin(M * rad) - 0.0069 * Math.sin(2 * L * rad);
+  const sd = Math.sin(L * rad) * Math.sin(23.4397 * rad), cd = Math.cos(Math.asin(sd));
+  const cw = (Math.sin(-0.833 * rad) - Math.sin(lat * rad) * sd) / (Math.cos(lat * rad) * cd);
+  if (cw < -1) return { polar: "day" };
+  if (cw > 1) return { polar: "night" };
+  const w = Math.acos(cw) / rad;
+  const toDate = (j) => new Date((j - 2440587.5) * 86400000);
+  return { rise: toDate(Jt - w / 360), set: toDate(Jt + w / 360) };
+}
+function sunShort(sn) {
+  if (sn.polar === "day") return "Midnattssol";
+  if (sn.polar === "night") return "Polarnatt";
+  return `↑${hmFmt.format(sn.rise)} ↓${hmFmt.format(sn.set)}`;
+}
+function sunLong(sn) {
+  if (sn.polar === "day") return "Midnattssol – solen går inte ner.";
+  if (sn.polar === "night") return "Polarnatt – solen går inte upp.";
+  const mins = Math.round((sn.set - sn.rise) / 60000);
+  return `Sol upp ${hmFmt.format(sn.rise)} · ned ${hmFmt.format(sn.set)} · dagslängd ${Math.floor(mins / 60)} h ${mins % 60} min`;
+}
+
 /* ---------- aggregera SMHI-tidsserie till dagar ---------- */
 function buildDays(json, nDays = 6) {
+  const coords = json.geometry && json.geometry.coordinates; // [lon, lat]
   const pts = json.timeSeries.map(t => {
     const d = t.data, time = new Date(t.time);
     const start = t.intervalParametersStartTime ? new Date(t.intervalParametersStartTime) : new Date(time - 3600e3);
@@ -247,6 +280,7 @@ function buildDays(json, nDays = 6) {
     d.sym = daySymbol(d);
     d.snowy = ["snow", "sleet"].includes(symInfo(d.sym).kind);
     d.uncertain = i >= 4;
+    if (coords) d.sun = sunTimes(d.key, coords[1], coords[0]);
     d.name = i === 0 ? "Idag" : i === 1 ? "Imorgon" : cap(clean(wdFmt.format(d.date)));
     d.long = i === 0 ? "idag" : i === 1 ? "imorgon" : wdLong.format(d.date);
     d.short = i === 0 ? "idag" : i === 1 ? "imorgon" : clean(wdFmt.format(d.date));
@@ -338,12 +372,13 @@ function render(place, json) {
             <div class="dname">${d.name}<small>${clean(dmFmt.format(d.date))}${d.partial ? " · resten" : ""}</small></div>
             <div class="icon">${icon(d.sym)}</div>
             <div class="tnums"><span class="hi">${r0(d.tMax)}°</span><span class="lo">${r0(d.tMin)}°</span></div>
+            ${d.sun ? `<div class="sun" aria-label="${sunLong(d.sun)}">${sunShort(d.sun)}</div>` : ""}
             ${fl.length ? `<div class="chips">${fl.map(f => `<span class="chip${f.w ? " warn" : ""}">${f.t}</span>`).join("")}</div>` : ""}
           </button>`;
         }).join("")}
       </section>
       <section id="hours" class="hours" hidden></section>
-      <div class="muted" style="font-size:.85rem">Tryck på en dag för timprognos. Högsta och lägsta temperatur under dygnet.</div>
+      <div class="muted" style="font-size:.85rem">Tryck på en dag för timprognos. Högsta och lägsta temperatur under dygnet. ↑↓ = sol upp och ned.</div>
     </div>`;
 
   const panel = $("hours");
@@ -355,6 +390,7 @@ function render(place, json) {
       el.setAttribute("aria-pressed", "true");
       const d = days.find(x => x.key === el.dataset.k);
       panel.innerHTML = `<h3>${d.name} ${clean(dmFmt.format(d.date))}</h3>` +
+        (d.sun ? `<div class="muted" style="font-size:.88rem">${sunLong(d.sun)}</div>` : "") +
         (d.coarse ? `<div class="muted" style="font-size:.8rem">Längre fram ges prognosen i 6- eller 12-timmarssteg.</div>` : "") +
         `<div class="hgrid">${d.pts.map(p => `<div class="hour"><span>${hmFmt.format(p.time)}</span>${icon(p.sym)}<span class="t">${r0(p.temp)}°</span></div>`).join("")}</div>`;
       panel.hidden = false;
