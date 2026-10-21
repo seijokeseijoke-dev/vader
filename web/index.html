@@ -87,6 +87,8 @@ button.link { background: none; color: var(--accent); padding: 2px 4px; font-wei
 .tnums { display: flex; gap: 6px; align-items: baseline; font-family: var(--font-display); font-variant-numeric: tabular-nums; }
 .tnums .hi { color: var(--warm); font-weight: 700; font-size: 1.35rem; }
 .tnums .lo { color: var(--cold); font-weight: 600; font-size: 1rem; }
+.sea { font-size: .95rem; font-weight: 600; color: var(--accent); margin-top: -8px; }
+.sea .muted { font-weight: 400; font-size: .85rem; }
 .sun { font-size: .74rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; }
 .chip { font-size: .64rem; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; padding: 1px 6px; border-radius: 999px; background: var(--info-bg); color: var(--info-fg); }
@@ -121,7 +123,7 @@ footer a { color: inherit; }
   <main id="out"><div class="state muted">Hämtar prognos…</div></main>
 
   <footer>
-    Data: <a href="https://www.smhi.se/data" target="_blank" rel="noopener">SMHI</a> (CC BY 4.0), prognosmodell SNOW1g.
+    Data: <a href="https://www.smhi.se/data" target="_blank" rel="noopener">SMHI</a> (CC BY 4.0), prognosmodell SNOW1g. Havstemperatur: närmaste SMHI-mätstation inom 40 km.
     Ortsökning: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> (Nominatim).
     Dag 5–6 är mindre säkra.
   </footer>
@@ -353,7 +355,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const r0 = (x) => Math.round(x);
 
-function render(place, json) {
+function render(place, json, sea) {
   const days = buildDays(json);
   if (!days.length) { $("out").innerHTML = `<div class="err">Prognosen saknar data för kommande dagar.</div>`; return; }
   const created = new Date(json.createdTime || json.approvedTime || Date.now());
@@ -362,6 +364,7 @@ function render(place, json) {
   $("out").innerHTML = `
     <div style="display:grid;gap:16px">
       <div class="place"><h2>${esc(place.name)}</h2><span class="muted" style="font-size:.85rem">${esc(place.detail)} · uppdaterad ${hmFmt.format(created)}</span></div>
+      ${sea ? `<div class="sea">${seaLine(sea)}</div>` : ""}
       <section class="summary" aria-label="Sammanfattning">
         <p class="lead">${esc(sum[0])}</p>${sum.slice(1).map(s => `<p>${esc(s)}</p>`).join("")}
       </section>
@@ -408,6 +411,42 @@ async function geocode(q) {
     return { name: x.name || parts[0], detail: parts.slice(1, 3).join(", "), lat: +x.lat, lon: +x.lon };
   });
 }
+/* ---------- havstemperatur: närmaste SMHI-mätstation ---------- */
+const OCOBS = "https://opendata-download-ocobs.smhi.se/api/version/latest/parameter/5";
+const SEA_MAX_KM = 40, SEA_MAX_AGE_H = 36;
+let seaMetaCache = null;
+const distKm = (aLat, aLon, bLat, bLon) =>
+  Math.hypot((aLat - bLat) * 111.2, (aLon - bLon) * 111.2 * Math.cos(aLat * Math.PI / 180));
+
+// Ren funktion (testbar): meta = parameter/5.json, latest = latest-day/data.json
+function nearestSea(meta, latest, lat, lon, now = Date.now()) {
+  const mobile = new Set((meta.station || []).filter(s => s.mobile).map(s => String(s.key)));
+  let best = null;
+  for (const st of latest.station || []) {
+    if (mobile.has(String(st.key)) || /bottensystem/i.test(st.name)) continue;   // fartyg, bottengivare
+    const vals = (st.value || []).filter(v => v.value != null && (+v.depth || 0) <= 2 && v.quality !== "R");
+    if (!vals.length) continue;
+    const v = vals.reduce((a, b) => b.date > a.date ? b : a);
+    if (now - v.date > SEA_MAX_AGE_H * 3600e3) continue;
+    const km = distKm(lat, lon, st.latitude, st.longitude);
+    if (km > SEA_MAX_KM) continue;
+    if (!best || km < best.km) best = { name: st.name, km, temp: v.value, time: new Date(v.date) };
+  }
+  return best;
+}
+async function seaTemp(p) {
+  try {
+    if (!seaMetaCache) seaMetaCache = fetch(OCOBS + ".json").then(r => r.ok ? r.json() : { station: [] });
+    const [meta, latest] = await Promise.all([seaMetaCache, fetch(OCOBS + "/station-set/all/period/latest-day/data.json").then(r => r.ok ? r.json() : null)]);
+    return latest ? nearestSea(meta, latest, p.lat, p.lon) : null;
+  } catch (_) { return null; }   // havstemp är en bonus – får aldrig stoppa prognosen
+}
+function seaLine(sea) {
+  const t = sea.temp.toFixed(1).replace(".", ",");
+  const ice = sea.temp <= 1 ? " · nära fryspunkten" : "";
+  return `Havet ${t}°${ice} <span class="muted">– ${esc(sea.name)}, ${Math.round(sea.km)} km, mätt ${hmFmt.format(sea.time)}</span>`;
+}
+
 async function forecast(p) {
   const r = await fetch(SMHI(p.lat, p.lon));
   if (r.status === 404) throw new Error("SMHI har ingen prognos för den platsen (bara Norden täcks).");
@@ -420,8 +459,8 @@ async function show(place) {
   const my = ++seq;
   $("out").innerHTML = `<div class="state muted">Hämtar prognos för ${esc(place.name)}…</div>`;
   try {
-    const json = await forecast(place);
-    if (my === seq) render(place, json);
+    const [json, sea] = await Promise.all([forecast(place), seaTemp(place)]);
+    if (my === seq) render(place, json, sea);
   } catch (e) {
     if (my === seq) $("out").innerHTML = `<div class="err">${esc(e.message || "Kunde inte hämta prognosen.")}</div>`;
   }
