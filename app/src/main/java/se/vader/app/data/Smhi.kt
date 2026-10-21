@@ -52,6 +52,13 @@ interface SmhiApi {
         @Path("lon", encoded = true) lon: String,
         @Path("lat", encoded = true) lat: String
     ): SmhiForecast
+
+    // Annan värd (ocobs) – absolut URL åsidosätter baseUrl.
+    @GET("https://opendata-download-ocobs.smhi.se/api/version/latest/parameter/5.json")
+    suspend fun seaStations(): OcobsMeta
+
+    @GET("https://opendata-download-ocobs.smhi.se/api/version/latest/parameter/5/station-set/all/period/latest-day/data.json")
+    suspend fun seaLatestDay(): OcobsLatest
 }
 
 /** Fel som UI:t kan visa direkt. */
@@ -68,6 +75,18 @@ class SmhiRepository(private val api: SmhiApi = SmhiModule.api) {
                 else "SMHI svarade med fel ${e.code()}. Försök igen om en stund."
             )
         }
+    }
+
+    private var seaMeta: OcobsMeta? = null
+
+    /** Havstemperatur från närmaste station. Fel ignoreras – det är en bonus som aldrig får stoppa prognosen. */
+    suspend fun seaTemperature(lat: Double, lon: Double): se.vader.app.domain.SeaReading? = try {
+        val meta = seaMeta ?: runCatching { api.seaStations() }.getOrNull()?.also { seaMeta = it }
+        se.vader.app.domain.Sea.nearest(meta, api.seaLatestDay(), lat, lon)
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
     }
 
     // Punkt som decimalavskiljare oavsett telefonens språk, max 4 decimaler (~10 m).

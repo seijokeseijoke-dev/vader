@@ -11,6 +11,7 @@ Visar SMHI:s 6-dagarsprognos för valfri ort i Norden, sammanfattad i klartext.
 - **Sammanfattning i klartext:** när det regnar/snöar och hur mycket, samt frostrisk
 - **Markeringar:** Frost, Blåsigt (byar ≥ 15 m/s eller medelvind ≥ 10 m/s), Mycket regn/snö (≥ 10 mm), Åska, Osäker (dag 5–6)
 - Sol upp och ned per dag (beräknas lokalt med NOAA:s solformel, ±1 min; hanterar midnattssol och polarnatt)
+- **Havstemperatur** från närmaste fasta SMHI-mätstation inom 40 km (värde från senaste 36 h; fartyg och bottengivare exkluderas). Visas inte för inlandsorter
 - Tryck på en dag för att se timprognosen och dagslängden
 - Appen minns senast valda ort. Android har även pull-to-refresh
 

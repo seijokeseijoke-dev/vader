@@ -15,7 +15,10 @@ import se.vader.app.data.Place
 import se.vader.app.data.PlaceRepository
 import se.vader.app.data.SmhiRepository
 import se.vader.app.domain.ForecastBuilder
+import se.vader.app.domain.SeaReading
 import se.vader.app.domain.Week
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import java.io.IOException
 
 data class WeatherState(
@@ -23,6 +26,7 @@ data class WeatherState(
     val place: Place? = null,
     val alternatives: List<Place> = emptyList(),
     val week: Week? = null,
+    val sea: SeaReading? = null,
     val loading: Boolean = false,
     val refreshing: Boolean = false,
     val status: String? = null,   // "Söker Kungälv…"
@@ -93,11 +97,17 @@ class WeatherViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun load(place: Place, keepContent: Boolean = false) {
         state = state.copy(
             loading = !keepContent, status = "Hämtar prognos för ${place.name}…", error = null,
-            week = if (keepContent) state.week else null, place = place
+            week = if (keepContent) state.week else null, place = place,
+            sea = if (keepContent) state.sea else null
         )
         state = try {
-            val week = ForecastBuilder.build(smhi.forecast(place.lat, place.lon))
-            state.copy(week = week, loading = false, refreshing = false, status = null,
+            val (json, sea) = coroutineScope {
+                val f = async { smhi.forecast(place.lat, place.lon) }
+                val s = async { smhi.seaTemperature(place.lat, place.lon) }
+                f.await() to s.await()
+            }
+            val week = ForecastBuilder.build(json)
+            state.copy(week = week, sea = sea, loading = false, refreshing = false, status = null,
                 error = if (week.days.isEmpty()) "Prognosen saknar data för kommande dagar." else null)
         } catch (e: CancellationException) {
             throw e

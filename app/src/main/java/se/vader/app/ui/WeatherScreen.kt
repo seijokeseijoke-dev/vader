@@ -134,6 +134,18 @@ fun WeatherScreen(vm: WeatherViewModel) {
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            s.sea?.let { sea ->
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "Havet ${String.format(SV, "%.1f", sea.temp)}°" + if (sea.nearFreezing) " · nära fryspunkten" else "",
+                                    color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    "${sea.station}, ${sea.distanceKm.roundToInt()} km, mätt ${HM.format(sea.time)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                     if (s.error != null) item { ErrorBox(s.error, onRetry = vm::refresh) }
@@ -142,7 +154,7 @@ fun WeatherScreen(vm: WeatherViewModel) {
                     item {
                         Text(
                             "Tryck på en dag för timprognos. Högsta och lägsta temperatur under dygnet. ↑↓ = sol upp och ned. " +
-                                "Dag 5–6 är mindre säkra.\nData: SMHI (CC BY 4.0), prognosmodell SNOW1g.",
+                                "Dag 5–6 är mindre säkra.\nData: SMHI (CC BY 4.0), prognosmodell SNOW1g. Havstemperatur: närmaste SMHI-mätstation inom 40 km.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
