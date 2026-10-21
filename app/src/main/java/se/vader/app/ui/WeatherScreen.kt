@@ -232,23 +232,23 @@ private fun DayTile(d: Day, selected: Boolean, onClick: () -> Unit, modifier: Mo
         border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
-            Text(d.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(d.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
             Text(
                 DM.format(d.date).trimEnd('.') + if (d.partial) " · resten" else "",
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1
             )
-            WeatherIcon(d.sym, 44.dp)
+            WeatherIcon(d.sym, 32.dp)
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("${d.tMax.roundToInt()}°", color = WarmColor, fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleLarge)
+                    style = MaterialTheme.typography.titleSmall)
                 Text("${d.tMin.roundToInt()}°", color = ColdColor, fontWeight = FontWeight.SemiBold,
-                    style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(bottom = 2.dp))
+                    style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 1.dp))
             }
             d.sun?.let {
                 Text(sunShort(it), style = MaterialTheme.typography.labelSmall,
