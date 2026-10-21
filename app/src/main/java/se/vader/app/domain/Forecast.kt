@@ -234,35 +234,10 @@ object ForecastBuilder {
             out += s
         }
 
-        if (days.size >= 6) {
-            val first3 = days.take(3); val last3 = days.takeLast(3)
-            val diff = last3.map { it.tMax }.average() - first3.map { it.tMax }.average()
-            out += when {
-                diff <= -3 -> "Kallare mot slutet, dagstemperatur ner mot ${last3.minOf { it.tMax }.roundToInt()}°."
-                diff >= 3 -> "Varmare mot slutet, upp mot ${last3.maxOf { it.tMax }.roundToInt()}°."
-                else -> "Jämn temperatur, ${days.minOf { it.tMax }.roundToInt()}–${days.maxOf { it.tMax }.roundToInt()}° på dagarna."
-            }
-        }
-
         val frost = days.filter { it.tMin <= 0 }
         if (frost.isNotEmpty()) out += "Risk för minusgrader ${listDays(frost)} (lägst ${temp(frost.minOf { it.tMin })}°)."
 
-        val windy = days.filter { it.gustMax >= 15 || it.windMax >= 10 }
-        if (windy.isNotEmpty()) out += "Blåsigt ${listDays(windy)}, byar upp till ${windy.maxOf { it.gustMax }.roundToInt()} m/s."
 
-        val cand = days.filter { !it.partial }
-        if (cand.size >= 2) {
-            fun score(d: Day): Double {
-                val k = Symbols.info(d.sym).kind
-                return d.precip * 3 + max(0.0, d.windMax - 4) * 1.5 +
-                    (if (k == Kind.CLOUD) 2.0 else 0.0) - (if (k == Kind.SUN) 2.0 else 0.0) - d.tMax * 0.3
-            }
-            val best = cand.minBy { score(it) }
-            out += if (best.precip < 1)
-                "Bästa dagen: ${best.long} – ${Symbols.name(best.sym).lowercase(SV)}, ${best.tMax.roundToInt()}°."
-            else
-                "Bäst chans till uppehåll: ${best.long} (${mm(best.precip)} mm, ${best.windMax.roundToInt()} m/s)."
-        }
         return out
     }
 

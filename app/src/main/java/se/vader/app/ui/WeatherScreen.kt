@@ -49,13 +49,11 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import se.vader.app.domain.Day
 import se.vader.app.domain.Point
 import se.vader.app.domain.STOCKHOLM
 import se.vader.app.domain.Week
-import se.vader.app.domain.mm
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.max
@@ -138,7 +136,7 @@ fun WeatherScreen(vm: WeatherViewModel) {
                     item { DaysCard(week) }
                     item {
                         Text(
-                            "Tryck på en dag för timprognos. Vind i m/s: medel (byar). Stapeln visar dagens lägsta–högsta på veckans skala. " +
+                            "Tryck på en dag för timprognos. Stapeln visar dagens lägsta–högsta på veckans skala. " +
                                 "Dag 5–7 är mindre säkra.\nData: SMHI (CC BY 4.0), prognosmodell SNOW1g.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -232,12 +230,6 @@ private fun DayRow(d: Day, lo: Double, span: Double) {
                     }
                 }
             }
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.width(64.dp), horizontalAlignment = Alignment.End) {
-                Text(if (d.precip >= 0.1) "${mm(d.precip)} mm" else "–", color = RainColor, fontWeight = FontWeight.SemiBold,
-                    style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End)
-                Text("${d.windMax.roundToInt()} (${d.gustMax.roundToInt()})", style = MaterialTheme.typography.bodySmall, maxLines = 1)
-            }
         }
         if (open) Hours(d)
     }
@@ -296,10 +288,5 @@ private fun HourRow(p: Point) {
         Text(HM.format(p.time), Modifier.width(52.dp), style = MaterialTheme.typography.bodyMedium)
         WeatherIcon(p.sym, 26.dp)
         Text("${p.temp.roundToInt()}°", Modifier.width(48.dp).padding(start = 8.dp), fontWeight = FontWeight.SemiBold)
-        Text(
-            if (p.precip >= 0.1) "${mm(p.precip)} mm" + (if (p.hours > 1) "/${p.hours} h" else "") else "",
-            Modifier.weight(1f), color = RainColor, style = MaterialTheme.typography.bodyMedium
-        )
-        Text("${p.wind.roundToInt()} (${p.gust.roundToInt()})", style = MaterialTheme.typography.bodyMedium)
     }
 }

@@ -72,7 +72,7 @@ button.link { background: none; color: var(--accent); padding: 2px 4px; font-wei
 .summary .lead { font-weight: 600; }
 .days { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
 .day {
-  display: grid; grid-template-columns: 4.6rem 2.6rem 1fr 4.4rem; gap: 10px; align-items: center;
+  display: grid; grid-template-columns: 4.6rem 2.6rem 1fr; gap: 10px; align-items: center;
   padding: 12px 14px; border-top: 1px solid var(--line); cursor: pointer; background: none; width: 100%;
   text-align: left; color: inherit; font: inherit; border-radius: 0;
 }
@@ -89,11 +89,8 @@ button.link { background: none; color: var(--accent); padding: 2px 4px; font-wei
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .chip { font-size: .72rem; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: var(--info-bg); color: var(--info-fg); }
 .chip.warn { background: var(--warn-bg); color: var(--warn-fg); }
-.side { text-align: right; font-size: .88rem; font-variant-numeric: tabular-nums; line-height: 1.3; }
-.side .pr { color: var(--rain); font-weight: 600; }
-.w { white-space: nowrap; }
 .hours { grid-column: 1 / -1; display: grid; gap: 2px; padding-top: 6px; }
-.hour { display: grid; grid-template-columns: 3.2rem 1.8rem 3rem 1fr 4.2rem; gap: 8px; align-items: center; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.hour { display: grid; grid-template-columns: 3.2rem 1.8rem 3rem; gap: 8px; align-items: center; font-size: .9rem; font-variant-numeric: tabular-nums; }
 .hour svg { width: 1.6rem; height: 1.6rem; display: block; }
 .hour .t { font-weight: 600; }
 .hour .p { color: var(--rain); }
@@ -102,8 +99,7 @@ button.link { background: none; color: var(--accent); padding: 2px 4px; font-wei
 footer { font-size: .8rem; color: var(--muted); }
 footer a { color: inherit; }
 @media (max-width: 420px) {
-  .day { grid-template-columns: 3.9rem 2.2rem 1fr 3.9rem; gap: 8px; padding: 12px 10px; }
-  .hour { grid-template-columns: 2.9rem 1.6rem 2.7rem 1fr 3.8rem; }
+  .day { grid-template-columns: 3.9rem 2.2rem 1fr; gap: 8px; padding: 12px 10px; }
 }
 @media (prefers-reduced-motion: no-preference) { .day { transition: background .15s; } .day:hover { background: var(--bg); } }
 </style>
@@ -309,26 +305,9 @@ function summarize(days) {
     out.push(`${s}, mest ${wettest.short} (${mm(wettest.precip)} mm). Totalt ca ${tot} mm.`);
   }
 
-  if (days.length >= 6) {
-    const avg = (a) => a.reduce((s, d) => s + d.tMax, 0) / a.length;
-    const diff = avg(days.slice(-3)) - avg(days.slice(0, 3));
-    if (diff <= -3) out.push(`Kallare mot slutet, dagstemperatur ner mot ${Math.round(Math.min(...days.slice(-3).map(d => d.tMax)))}°.`);
-    else if (diff >= 3) out.push(`Varmare mot slutet, upp mot ${Math.round(Math.max(...days.slice(-3).map(d => d.tMax)))}°.`);
-    else out.push(`Jämn temperatur, ${Math.round(Math.min(...days.map(d => d.tMax)))}–${Math.round(Math.max(...days.map(d => d.tMax)))}° på dagarna.`);
-  }
-
   const frost = days.filter(d => d.tMin <= 0);
   if (frost.length) out.push(`Risk för minusgrader ${listDays(frost)} (lägst ${fmtT(Math.min(...frost.map(d => d.tMin)))}°).`);
-  const windy = days.filter(d => d.gustMax >= 15 || d.windMax >= 10);
-  if (windy.length) out.push(`Blåsigt ${listDays(windy)}, byar upp till ${Math.round(Math.max(...windy.map(d => d.gustMax)))} m/s.`);
 
-  const cand = days.filter(d => !d.partial);
-  if (cand.length >= 2) {
-    const score = (d) => d.precip * 3 + Math.max(0, d.windMax - 4) * 1.5 + (symInfo(d.sym).kind === "cloud" ? 2 : 0) + (symInfo(d.sym).kind === "sun" ? -2 : 0) - d.tMax * 0.3;
-    const best = cand.reduce((a, b) => score(b) < score(a) ? b : a);
-    if (best.precip < 1) out.push(`Bästa dagen: ${best.long} – ${SYM[best.sym].toLowerCase()}, ${Math.round(best.tMax)}°.`);
-    else out.push(`Bäst chans till uppehåll: ${best.long} (${mm(best.precip)} mm, ${Math.round(best.windMax)} m/s).`);
-  }
   return out;
 }
 function listDays(a) {
@@ -367,11 +346,10 @@ function render(place, json) {
               <div class="bar"><span style="left:${l.toFixed(1)}%;width:${w.toFixed(1)}%"></span></div>
               ${fl.length ? `<div class="chips">${fl.map(f => `<span class="chip${f.w ? " warn" : ""}">${f.t}</span>`).join("")}</div>` : ""}
             </div>
-            <div class="side"><div class="pr">${d.precip >= 0.1 ? mm(d.precip) + " mm" : "–"}</div><div class="w">${r0(d.windMax)} (${r0(d.gustMax)})</div></div>
           </div>`;
         }).join("")}
       </section>
-      <div class="muted" style="font-size:.85rem">Tryck på en dag för timprognos. Vind i m/s: medel (byar). Stapeln visar dagens lägsta–högsta på veckans skala.</div>
+      <div class="muted" style="font-size:.85rem">Tryck på en dag för timprognos. Stapeln visar dagens lägsta–högsta på veckans skala.</div>
     </div>`;
 
   document.querySelectorAll(".day").forEach(el => {
@@ -381,8 +359,7 @@ function render(place, json) {
       const d = days.find(x => x.key === el.dataset.k);
       const h = document.createElement("div"); h.className = "hours";
       h.innerHTML = (d.coarse ? `<div class="muted" style="font-size:.8rem">Längre fram ges prognosen i 6- eller 12-timmarssteg.</div>` : "") +
-        d.pts.map(p => `<div class="hour"><span>${hmFmt.format(p.time)}</span>${icon(p.sym)}<span class="t">${r0(p.temp)}°</span>
-          <span class="p">${p.precip >= 0.1 ? mm(p.precip) + " mm" + (p.hours > 1 ? `/${p.hours} h` : "") : ""}</span><span class="w">${r0(p.wind)} (${r0(p.gust ?? p.wind)})</span></div>`).join("");
+        d.pts.map(p => `<div class="hour"><span>${hmFmt.format(p.time)}</span>${icon(p.sym)}<span class="t">${r0(p.temp)}°</span></div>`).join("");
       el.appendChild(h); el.setAttribute("aria-expanded", "true");
     };
     el.addEventListener("click", toggle);

@@ -7,8 +7,8 @@ Visar SMHI:s 7-dagarsprognos för valfri ort i Norden, sammanfattad i klartext.
 
 ## Funktioner
 - Inmatning av ort, med "Menade du"-förslag när det finns flera orter med samma namn
-- En rad per dag: symbol, lägsta/högsta temperatur som stapel på veckans gemensamma skala, nederbörd i mm, vind (byar)
-- **Sammanfattning i klartext:** regnperioder, temperaturtrend, frost, blåst och veckans bästa dag
+- En rad per dag: symbol och lägsta/högsta temperatur som stapel på veckans gemensamma skala
+- **Sammanfattning i klartext:** när det regnar/snöar och hur mycket, samt frostrisk
 - **Markeringar:** Frost, Blåsigt (byar ≥ 15 m/s eller medelvind ≥ 10 m/s), Mycket nederbörd (≥ 10 mm), Åska, Osäker (dag 5–7)
 - Tryck på en dag för att se timprognosen
 - Appen minns senast valda ort. Android har även pull-to-refresh
@@ -26,7 +26,6 @@ Prognosen är timvis i cirka 2 dygn, därefter i 2-, 6- och 12-timmarssteg, tota
 
 ## Så beräknas "smart"
 - **Dagens symbol:** Tas från dagtid (07–20). En torr dag får median-molnigheten. En våt dag får den vanligaste nederbördssymbolen, och vid lika antal den kraftigaste.
-- **Bästa dagen:** Den dag som har minst nederbörd och blåst, är varmast och minst mulen. Dagens resterande timmar räknas inte.
 - **Osäkerhet:** Dag 5–7 visas nedtonade. Träffsäkerheten sjunker tydligt efter 4–5 dygn.
 
 ## Struktur

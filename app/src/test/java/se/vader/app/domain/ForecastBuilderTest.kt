@@ -64,11 +64,13 @@ class ForecastBuilderTest {
     }
 
     @Test
-    fun summaryMentionsRainWindAndBestDay() {
-        val text = ForecastBuilder.build(series(now), now).summary.joinToString("\n")
-        assertTrue(text, text.contains("regn"))
-        assertTrue(text, text.contains("Blåsigt"))
-        assertTrue(text, text.contains("Bästa dagen") || text.contains("Bäst chans"))
+    fun summaryIsOnlyPrecipitation() {
+        val summary = ForecastBuilder.build(series(now), now).summary
+        val text = summary.joinToString("\n")
+        assertTrue(text, summary[0].contains("regn"))
+        // Borttaget på begäran: temperaturtrend, blåst och bästa dag. Endast nederbörd (+ ev. frost) får finnas.
+        assertTrue(text, listOf("Blåsigt", "Bäst", "Jämn temperatur", "Kallare", "Varmare").none { text.contains(it) })
+        assertTrue(text, summary.drop(1).all { it.startsWith("Risk för minusgrader") })
     }
 
     @Test
