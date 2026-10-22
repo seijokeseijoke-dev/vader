@@ -62,9 +62,9 @@ class PlaceRepository(context: Context) {
         }
 
     private fun Address.toPlace(query: String): Place {
-        val name = locality ?: subLocality ?: featureName ?: query.trim()
-        val detail = listOfNotNull(subAdminArea, adminArea).distinct()
-            .filter { it != name }.joinToString(", ")
+        val name = pickPlaceName(query, featureName, subLocality, locality, subAdminArea)
+        val detail = listOfNotNull(locality, subAdminArea, adminArea).distinct()
+            .filter { !it.equals(name, ignoreCase = true) }.joinToString(", ")
         return Place(name, detail, latitude, longitude)
     }
 
@@ -77,4 +77,27 @@ class PlaceRepository(context: Context) {
 
     private fun Place.distanceKm(o: Place): Double =
         hypot((lat - o.lat) * 111.0, (lon - o.lon) * 111.0 * cos(Math.toRadians(lat)))
+}
+
+/**
+ * Väljer ortnamn ur Geocoderns fält. Förr togs alltid `locality` först, så "Billdal"
+ * blev "Göteborg" (Billdal ligger i Göteborgs kommun och hamnar i subLocality/featureName).
+ * Nu: det fält som matchar det användaren skrev vinner; annars den mest specifika orten.
+ */
+internal fun pickPlaceName(
+    query: String,
+    featureName: String?,
+    subLocality: String?,
+    locality: String?,
+    subAdminArea: String?
+): String {
+    val q = query.trim()
+    val fields = listOfNotNull(featureName, subLocality, locality, subAdminArea).filter { it.isNotBlank() }
+    fields.firstOrNull { it.equals(q, ignoreCase = true) }?.let { return it }
+    fields.firstOrNull { it.startsWith(q, ignoreCase = true) || q.startsWith(it, ignoreCase = true) }?.let { return it }
+    // featureName kan vara en gatuadress/postnummer ("12"), därför subLocality före locality men featureName sist.
+    return subLocality?.takeIf { it.isNotBlank() }
+        ?: locality?.takeIf { it.isNotBlank() }
+        ?: featureName?.takeIf { it.isNotBlank() && !it.first().isDigit() }
+        ?: q.replaceFirstChar { it.titlecase() }
 }
