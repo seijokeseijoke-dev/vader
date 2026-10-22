@@ -3,7 +3,7 @@ name: Android CI
 on:
   push:
     branches: [ main ]
-    paths-ignore: [ "web/**", ".github/workflows/pages.yml", "README.md" ]
+    paths-ignore: [ "web/**", ".github/workflows/pages.yml", "README.md", "apk/**" ]
   pull_request:
   workflow_dispatch:
 
@@ -56,3 +56,17 @@ jobs:
             Ladda ner .apk-filen nedan och installera på telefonen (tillåt installation från okänd källa).
           files: ${{ steps.apk.outputs.file }}
           make_latest: true
+
+      # Lägg även senaste APK:n direkt i repot (mappen apk/) så att den syns i fillistan.
+      - name: Commit APK to repo
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p apk
+          cp "${{ steps.apk.outputs.file }}" apk/vader.apk
+          echo "Version ${{ steps.apk.outputs.version }}, build ${{ github.run_number }}, commit ${{ github.sha }}" > apk/VERSION.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apk/vader.apk apk/VERSION.txt
+          git commit -m "APK ${{ steps.apk.outputs.version }} build ${{ github.run_number }} [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
