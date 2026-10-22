@@ -3,7 +3,7 @@
 Visar SMHI:s 6-dagarsprognos för valfri ort i Norden, sammanfattad i klartext.
 
 - **Webbversion (för test):** https://seijokeseijoke-dev.github.io/vader/
-- **Android-APK:** [`apk/vader.apk`](apk/vader.apk) i repot (version i [`apk/VERSION.txt`](apk/VERSION.txt)), och även under *Releases*. Byggs automatiskt vid varje push till `main`
+- **Android-APK, alltid senaste:** https://github.com/seijokeseijoke-dev/vader/raw/apk/vader.apk (grenen `apk`, skrivs över vid varje bygge). Finns även under *Releases → senaste*
 
 ## Funktioner
 - Inmatning av ort, med "Menade du"-förslag när det finns flera orter med samma namn

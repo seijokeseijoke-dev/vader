@@ -3,7 +3,7 @@ name: Android CI
 on:
   push:
     branches: [ main ]
-    paths-ignore: [ "web/**", ".github/workflows/pages.yml", "README.md", "apk/**" ]
+    paths-ignore: [ "web/**", ".github/workflows/pages.yml", "README.md" ]
   pull_request:
   workflow_dispatch:
 
@@ -44,29 +44,39 @@ jobs:
           name: vader-debug-apk
           path: ${{ steps.apk.outputs.file }}
 
-      # Vid push till main: publicera APK:n som en Release (direktnedladdning, ingen zip).
-      - name: Publish Release
+      # Vid push till main: skriv över grenen "apk" (en enda commit, ingen växande historik)
+      - name: Publish APK to branch apk (overwrite)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          D=$(mktemp -d)
+          cp "${{ steps.apk.outputs.file }}" "$D/vader.apk"
+          cd "$D"
+          echo "Version ${{ steps.apk.outputs.version }}, build ${{ github.run_number }}, commit ${{ github.sha }}" > VERSION.txt
+          printf '# Senaste APK\n\n[Ladda ner vader.apk](https://github.com/${{ github.repository }}/raw/apk/vader.apk)\n\nSe VERSION.txt för version. Grenen skrivs över vid varje bygge.\n' > README.md
+          git init -q -b apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add . && git commit -qm "APK ${{ steps.apk.outputs.version }} build ${{ github.run_number }}"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" apk
+
+      # En enda release "senaste" som skrivs över (taggen flyttas till aktuell commit)
+      - name: Move tag senaste
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          cp "${{ steps.apk.outputs.file }}" vader.apk
+          git tag -f senaste
+          git push -f origin refs/tags/senaste
+
+      - name: Publish Release (overwrite)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.apk.outputs.version }}-build${{ github.run_number }}
-          name: Väder 7 dagar ${{ steps.apk.outputs.version }} (build ${{ github.run_number }})
+          tag_name: senaste
+          name: Väder 6 dagar – senaste APK
           body: |
-            Debug-APK byggd från ${{ github.sha }}.
-            Ladda ner .apk-filen nedan och installera på telefonen (tillåt installation från okänd källa).
-          files: ${{ steps.apk.outputs.file }}
+            Version ${{ steps.apk.outputs.version }}, build ${{ github.run_number }}, från ${{ github.sha }}.
+            Ladda ner vader.apk nedan och installera på telefonen (tillåt installation från okänd källa).
+            Den här releasen skrivs över vid varje bygge.
+          files: vader.apk
+          overwrite_files: true
           make_latest: true
-
-      # Lägg även senaste APK:n direkt i repot (mappen apk/) så att den syns i fillistan.
-      - name: Commit APK to repo
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          mkdir -p apk
-          cp "${{ steps.apk.outputs.file }}" apk/vader.apk
-          echo "Version ${{ steps.apk.outputs.version }}, build ${{ github.run_number }}, commit ${{ github.sha }}" > apk/VERSION.txt
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apk/vader.apk apk/VERSION.txt
-          git commit -m "APK ${{ steps.apk.outputs.version }} build ${{ github.run_number }} [skip ci]"
-          git pull --rebase origin main
-          git push origin HEAD:main
