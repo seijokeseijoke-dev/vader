@@ -13,6 +13,7 @@ Visar SMHI:s 6-dagarsprognos för valfri ort i Norden, sammanfattad i klartext.
 - Sol upp och ned per dag (beräknas lokalt med NOAA:s solformel, ±1 min; hanterar midnattssol och polarnatt)
 - **Havstemperatur** från närmaste fasta SMHI-mätstation inom 40 km (värde från senaste 36 h; fartyg och bottengivare exkluderas). Visas inte för inlandsorter
 - Tryck på en dag för att se timprognosen och dagslängden
+- **Favoriter:** upp till 3 orter under sökrutan. Spara med ☆ vid ortnamnet, ta bort med ×. Ett tryck visar orten som sökt ort, utan ny ortsökning eftersom koordinaterna sparas
 - Appen minns senast valda ort. Android har även pull-to-refresh
 
 ## Datakällor

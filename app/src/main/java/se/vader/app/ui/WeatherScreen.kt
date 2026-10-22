@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -53,7 +54,15 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
+import se.vader.app.data.Place
+import se.vader.app.domain.Favorites
 import se.vader.app.domain.Day
 import se.vader.app.domain.Point
 import se.vader.app.domain.STOCKHOLM
@@ -108,6 +117,8 @@ fun WeatherScreen(vm: WeatherViewModel) {
                     }
                 }
 
+                item { FavoritesRow(s, vm) }
+
                 if (s.alternatives.isNotEmpty()) item { Alternatives(s.alternatives.map { it to "${it.name}${it.detail.substringBefore(',').let { d -> if (d.isBlank()) "" else ", $d" }}" }, vm) }
 
                 when {
@@ -127,7 +138,20 @@ fun WeatherScreen(vm: WeatherViewModel) {
                 if (week != null && place != null && week.days.isNotEmpty()) {
                     item {
                         Column {
-                            Text(place.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(place.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                                TextButton(onClick = vm::toggleFavorite) {
+                                    Text(
+                                        if (s.isFavorite) "★" else "☆",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        color = if (s.isFavorite) WarmColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.semantics {
+                                            contentDescription = if (s.isFavorite) "Ta bort från favoriter" else "Spara som favorit"
+                                        }
+                                    )
+                                }
+                            }
+                            s.favMessage?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                             Text(
                                 listOfNotNull(place.detail.ifBlank { null }, week.created?.let { "uppdaterad ${HM.format(it)}" })
                                     .joinToString(" · "),
@@ -317,4 +341,45 @@ private fun sunLong(s: SunTimes): String {
     if (s.polarNight) return "Polarnatt – solen går inte upp."
     val mins = s.dayLength?.toMinutes() ?: 0
     return "Sol upp ${HM.format(s.rise)} · ned ${HM.format(s.set)} · dagslängd ${mins / 60} h ${mins % 60} min"
+}
+
+/** Upp till 3 favoriter under sökrutan. Tryck = visa orten, × = ta bort. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FavoritesRow(s: WeatherState, vm: WeatherViewModel) {
+    if (s.favorites.isEmpty()) {
+        Text(
+            "Tryck ☆ vid ortnamnet för att spara upp till ${Favorites.MAX} favoriter.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        return
+    }
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        s.favorites.forEach { f -> FavoriteChip(f, active = s.place?.let { Favorites.same(it, f) } == true, vm) }
+    }
+}
+
+@Composable
+private fun FavoriteChip(f: Place, active: Boolean, vm: WeatherViewModel) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        border = BorderStroke(if (active) 2.dp else 1.dp,
+            if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                f.name,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clickable { vm.openFavorite(f) }.padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp)
+            )
+            Icon(
+                Icons.Filled.Close,
+                contentDescription = "Ta bort ${f.name}",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.clickable { vm.removeFavorite(f) }.padding(start = 2.dp, end = 10.dp, top = 8.dp, bottom = 8.dp).size(18.dp)
+            )
+        }
+    }
 }

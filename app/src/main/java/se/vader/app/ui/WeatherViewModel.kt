@@ -14,6 +14,8 @@ import se.vader.app.data.ForecastException
 import se.vader.app.data.Place
 import se.vader.app.data.PlaceRepository
 import se.vader.app.data.SmhiRepository
+import se.vader.app.data.FavoriteStore
+import se.vader.app.domain.Favorites
 import se.vader.app.domain.ForecastBuilder
 import se.vader.app.domain.SeaReading
 import se.vader.app.domain.Week
@@ -30,18 +32,48 @@ data class WeatherState(
     val loading: Boolean = false,
     val refreshing: Boolean = false,
     val status: String? = null,   // "Söker Kungälv…"
-    val error: String? = null
-)
+    val error: String? = null,
+    val favorites: List<Place> = emptyList(),
+    val favMessage: String? = null
+) {
+    val isFavorite: Boolean get() = Favorites.contains(favorites, place)
+}
 
 class WeatherViewModel(app: Application) : AndroidViewModel(app) {
 
     private val places = PlaceRepository(app)
     private val smhi = SmhiRepository()
     private val prefs = app.getSharedPreferences("vader", Context.MODE_PRIVATE)
+    private val favStore = FavoriteStore(prefs)
     private var job: Job? = null
 
-    var state by mutableStateOf(WeatherState(query = prefs.getString(KEY_ORT, DEFAULT_ORT) ?: DEFAULT_ORT))
+    var state by mutableStateOf(
+        WeatherState(query = prefs.getString(KEY_ORT, DEFAULT_ORT) ?: DEFAULT_ORT, favorites = favStore.load())
+    )
         private set
+
+    /** Stjärnan vid ortnamnet: lägg till / ta bort aktuell ort. */
+    fun toggleFavorite() {
+        val p = state.place ?: return
+        state = when (val r = Favorites.toggle(state.favorites, p)) {
+            is Favorites.Toggle.Ok -> { favStore.save(r.list); state.copy(favorites = r.list, favMessage = null) }
+            Favorites.Toggle.Full -> state.copy(favMessage = "Max ${Favorites.MAX} favoriter – ta bort en med × först.")
+        }
+    }
+
+    fun removeFavorite(p: Place) {
+        val list = state.favorites.filterNot { Favorites.same(it, p) }
+        favStore.save(list)
+        state = state.copy(favorites = list, favMessage = null)
+    }
+
+    /** Tryck på en favorit: visas som sökt ort, utan ny ortsökning (koordinaterna är sparade). */
+    fun openFavorite(p: Place) {
+        job?.cancel()
+        prefs.edit().putString(KEY_ORT, p.name).apply()
+        state = state.copy(query = p.name, alternatives = emptyList(), favMessage = null)
+        job = viewModelScope.launch { load(p) }
+    }
 
     init {
         search()
@@ -57,7 +89,7 @@ class WeatherViewModel(app: Application) : AndroidViewModel(app) {
         if (q.isEmpty()) return
         job?.cancel()
         job = viewModelScope.launch {
-            state = state.copy(loading = true, status = "Söker $q…", error = null, alternatives = emptyList())
+            state = state.copy(loading = true, status = "Söker $q…", error = null, alternatives = emptyList(), favMessage = null)
             try {
                 val hits = places.search(q)
                 if (hits.isEmpty()) {
