@@ -65,6 +65,17 @@ button {
   background: var(--accent); color: var(--surface); cursor: pointer;
 }
 button.link { background: none; color: var(--accent); padding: 2px 4px; font-weight: 500; text-decoration: underline; }
+.favs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: -6px; }
+.favs .hint { font-size: .85rem; color: var(--muted); }
+.fav { display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); overflow: hidden; }
+.fav.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.fav button { background: none; color: var(--fg); border-radius: 0; font: 600 .95rem var(--font-body); padding: 7px 4px 7px 14px; }
+.fav button.x { color: var(--muted); font-weight: 400; padding: 7px 12px 7px 6px; font-size: 1.05rem; line-height: 1; }
+.fav button.x:hover { color: var(--warn-fg); }
+.star { background: none; color: var(--warm); font-size: 1.5rem; line-height: 1; padding: 0 4px; }
+.star[aria-pressed="false"] { color: var(--muted); }
+.place .title { display: flex; align-items: center; gap: 4px; }
+.favmsg { font-size: .85rem; color: var(--warn-fg); }
 .alts { font-size: .92rem; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
 .place { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .place h2 { font: 600 1.6rem/1.1 var(--font-display); margin: 0; }
@@ -118,6 +129,7 @@ footer a { color: inherit; }
     <input id="q" type="search" placeholder="Skriv ort, t.ex. Kungälv" aria-label="Ort" required>
     <button type="submit">Visa</button>
   </form>
+  <div id="favs" class="favs" aria-label="Favoritorter"></div>
   <div id="alts" class="alts" hidden></div>
 
   <main id="out"><div class="state muted">Hämtar prognos…</div></main>
@@ -363,7 +375,7 @@ function render(place, json, sea) {
 
   $("out").innerHTML = `
     <div style="display:grid;gap:16px">
-      <div class="place"><h2>${esc(place.name)}</h2><span class="muted" style="font-size:.85rem">${esc(place.detail)} · uppdaterad ${hmFmt.format(created)}</span></div>
+      <div class="place"><div class="title"><h2>${esc(place.name)}</h2>${starButton(place)}</div><span class="muted" style="font-size:.85rem">${esc(place.detail)} · uppdaterad ${hmFmt.format(created)}</span></div>
       ${sea ? `<div class="sea">${seaLine(sea)}</div>` : ""}
       <section class="summary" aria-label="Sammanfattning">
         <p class="lead">${esc(sum[0])}</p>${sum.slice(1).map(s => `<p>${esc(s)}</p>`).join("")}
@@ -454,13 +466,61 @@ async function forecast(p) {
   return r.json();
 }
 
+/* ---------- favoriter (max 3, sparas i webbläsaren) ---------- */
+const MAX_FAVS = 3;
+let favs = [];
+try { favs = JSON.parse(localStorage.getItem("vader.favs") || "[]").filter(f => f && f.name && isFinite(f.lat) && isFinite(f.lon)).slice(0, MAX_FAVS); } catch (_) { favs = []; }
+let currentPlace = null;
+const samePlace = (a, b) => a && b && Math.hypot((a.lat - b.lat) * 111, (a.lon - b.lon) * 111 * Math.cos(a.lat * Math.PI / 180)) < 1;
+const favIndex = (p) => favs.findIndex(f => samePlace(f, p));
+function saveFavs() { try { localStorage.setItem("vader.favs", JSON.stringify(favs)); } catch (_) {} }
+
+function starButton(p) {
+  const on = favIndex(p) >= 0;
+  return `<button type="button" class="star" id="star" aria-pressed="${on}" title="${on ? "Ta bort från favoriter" : "Spara som favorit"}" aria-label="${on ? "Ta bort från favoriter" : "Spara som favorit"}">${on ? "★" : "☆"}</button><span id="favmsg" class="favmsg"></span>`;
+}
+function wireStar() {
+  const b = $("star"); if (!b || !currentPlace) return;
+  b.addEventListener("click", () => {
+    const i = favIndex(currentPlace);
+    if (i >= 0) favs.splice(i, 1);
+    else if (favs.length >= MAX_FAVS) { $("favmsg").textContent = `Max ${MAX_FAVS} favoriter – ta bort en med × först.`; return; }
+    else favs.push({ name: currentPlace.name, detail: currentPlace.detail, lat: currentPlace.lat, lon: currentPlace.lon });
+    saveFavs();
+    const on = favIndex(currentPlace) >= 0;
+    b.textContent = on ? "★" : "☆"; b.setAttribute("aria-pressed", on);
+    b.title = b.ariaLabel = on ? "Ta bort från favoriter" : "Spara som favorit";
+    $("favmsg").textContent = "";
+    renderFavs();
+  });
+}
+function renderFavs() {
+  const el = $("favs");
+  if (!favs.length) { el.innerHTML = `<span class="hint">Tryck ☆ vid ortnamnet för att spara upp till ${MAX_FAVS} favoriter.</span>`; return; }
+  el.innerHTML = favs.map((f, i) => `<span class="fav${samePlace(f, currentPlace) ? " on" : ""}">
+      <button type="button" data-i="${i}" class="go">${esc(f.name)}</button><button type="button" data-i="${i}" class="x" aria-label="Ta bort ${esc(f.name)}">×</button></span>`).join("");
+  el.querySelectorAll("button.go").forEach(b => b.addEventListener("click", () => {
+    const f = favs[+b.dataset.i];
+    $("q").value = f.name;
+    $("alts").hidden = true;
+    try { localStorage.setItem("vader.ort", f.name); } catch (_) {}
+    show(f);
+  }));
+  el.querySelectorAll("button.x").forEach(b => b.addEventListener("click", () => {
+    favs.splice(+b.dataset.i, 1); saveFavs(); renderFavs();
+    const st = $("star"); if (st && currentPlace && favIndex(currentPlace) < 0) { st.textContent = "☆"; st.setAttribute("aria-pressed", "false"); }
+  }));
+}
+
 let seq = 0;
 async function show(place) {
   const my = ++seq;
+  currentPlace = place;
+  renderFavs();
   $("out").innerHTML = `<div class="state muted">Hämtar prognos för ${esc(place.name)}…</div>`;
   try {
     const [json, sea] = await Promise.all([forecast(place), seaTemp(place)]);
-    if (my === seq) render(place, json, sea);
+    if (my === seq) { render(place, json, sea); wireStar(); }
   } catch (e) {
     if (my === seq) $("out").innerHTML = `<div class="err">${esc(e.message || "Kunde inte hämta prognosen.")}</div>`;
   }
@@ -493,6 +553,7 @@ $("f").addEventListener("submit", (e) => { e.preventDefault(); search($("q").val
 let start = DEFAULT_ORT;
 try { start = localStorage.getItem("vader.ort") || DEFAULT_ORT; } catch (_) {}
 $("q").value = start;
+renderFavs();
 search(start);
 </script>
 </body>
